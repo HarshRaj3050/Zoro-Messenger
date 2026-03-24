@@ -98,7 +98,16 @@ async function userLogin(req, res) {
         return res.status(400).json({ message: 'Username and password are required' });
     }
 
-    const user = await userModel.findOne({ username });
+    const usernameORemail = username.includes('@'); // email - true, username - false
+    let user;
+    if (usernameORemail) {
+        const email = username;
+        user = await userModel.findOne({ email });
+    } else {
+        user = await userModel.findOne({ username });
+    }
+
+
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
     }
@@ -112,7 +121,17 @@ async function userLogin(req, res) {
         return res.status(403).json({ message: 'Email not verified' });
     }
 
-    const token = jwt.sign({ id: user._id, username: user.username }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    const token = jwt.sign(
+        { id: user?._id },
+        process.env.JWT_SECRET,
+        { expiresIn: '24h' }
+    );
+
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'None'
+    })
 
     res.status(200).json({
         message: 'Login successful',
@@ -126,5 +145,9 @@ async function userLogin(req, res) {
     });
 }
 
+async function logoutUser(req, res) {
+    res.clearCookie('token');
+    res.status(200).json({ message: "user logged out successfully" })
+}
 
-module.exports = {userRegister,verifyEmail, userLogin}
+module.exports = { userRegister, verifyEmail, userLogin, logoutUser }
